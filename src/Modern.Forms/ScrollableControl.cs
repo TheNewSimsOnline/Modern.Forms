@@ -147,10 +147,15 @@ namespace Modern.Forms
         /// <inheritdoc/>
         protected override void OnLayout (LayoutEventArgs e)
         {
+            // Lay the children out first. Recalculate () resumes layout without
+            // performing one, which re-initializes every child's anchor info; doing
+            // that before the anchored children have been positioned re-records
+            // their distance to the edges of the container they have not been
+            // fitted to yet, and they never move again.
+            base.OnLayout (e);
+
             CalculateCanvasSize ();
             AdjustFormScrollbars (AutoScroll);
-
-            base.OnLayout (e);
         }
 
         /// <inheritdoc/>

@@ -41,6 +41,13 @@ namespace Modern.Forms
             base.OnPaint (e);
 
             RenderManager.Render (this, e);
+
+            // The tab strip is an implicit child. Avalonia/AppKit can omit that
+            // child's backing buffer while still laying out the selected page,
+            // leaving a correctly-sized but blank strip. Composite the strip as
+            // part of the TabControl's own paint so tab labels are guaranteed to
+            // be visible on every backend.
+            tab_strip.RenderOntoParent (e);
         }
 
         /// <summary>
@@ -48,7 +55,17 @@ namespace Modern.Forms
         /// </summary>
         public int SelectedIndex {
             get => tab_strip.SelectedIndex;
-            set => tab_strip.SelectedIndex = value;
+            set {
+                if (tab_strip.SelectedIndex == value) {
+                    // A designer commonly assigns SelectedIndex = 0 after the
+                    // first page is inserted. The strip already defaults to 0,
+                    // so no change event is raised unless we synchronize the
+                    // page visibility explicitly.
+                    TabStrip_SelectedTabChanged (tab_strip, EventArgs.Empty);
+                } else {
+                    tab_strip.SelectedIndex = value;
+                }
+            }
         }
 
         /// <summary>
@@ -92,6 +109,23 @@ namespace Modern.Forms
                 new_selected.Visible = true;
 
             OnSelectedIndexChanged (EventArgs.Empty);
+        }
+
+        /// <inheritdoc/>
+        protected override void OnLayout (LayoutEventArgs e)
+        {
+            base.OnLayout (e);
+
+            // Keep the implicit strip and the selected page in deterministic,
+            // non-overlapping bounds. Designer-created pages carry WinForms' old
+            // (4, 22) design-time bounds, and on some backends those bounds could
+            // survive the first layout and paint over the implicit tab strip.
+            var strip_height = tab_strip.Height > 0 ? tab_strip.Height : 31;
+            tab_strip.SetBounds (0, 0, Width, strip_height, BoundsSpecified.All);
+
+            var page_height = Math.Max (0, Height - strip_height);
+            foreach (var page in TabPages)
+                page.SetBounds (0, strip_height, Width, page_height, BoundsSpecified.All);
         }
     }
 }

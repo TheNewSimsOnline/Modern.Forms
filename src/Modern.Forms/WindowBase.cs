@@ -291,13 +291,21 @@ namespace Modern.Forms
 
             using var framebuffer = skia_framebuffer.Lock ();
 
+            // AppKit can request a paint while its backing store is being resized or
+            // replaced. Skia cannot create a surface until that buffer is drawable.
+            if (framebuffer == null || framebuffer.Address == IntPtr.Zero ||
+                framebuffer.Size.Width <= 0 || framebuffer.Size.Height <= 0 || framebuffer.RowBytes <= 0)
+                return;
+
             var framebufferImageInfo = new SKImageInfo (framebuffer.Size.Width, framebuffer.Size.Height,
                 framebuffer.Format.ToSkColorType (), framebuffer.Format == PixelFormat.Rgb565 ? SKAlphaType.Opaque : SKAlphaType.Premul);
 
+            using var surface = SKSurface.Create (framebufferImageInfo, framebuffer.Address, framebuffer.RowBytes);
+            if (surface == null)
+                return;
+
             var scaled_client_size = ScaledClientSize;
             var scaled_display_rect = ScaledDisplayRectangle;
-
-            using var surface = SKSurface.Create (framebufferImageInfo, framebuffer.Address, framebuffer.RowBytes);
 
             var e = new PaintEventArgs (framebufferImageInfo, surface.Canvas, Scaling);
             OnPaintBackground (e);
@@ -343,6 +351,14 @@ namespace Modern.Forms
         }
 
         private void OnResize (Size size, WindowResizeReason reason)
+        {
+            SyncAdapterBounds ();
+        }
+
+        // A size requested before the window was shown does not always come back
+        // through Resized, and the control tree would then keep the bounds it was
+        // created with. Re-applying them costs nothing when the callback did fire.
+        internal void SyncAdapterBounds ()
         {
             adapter.SetBounds (DisplayRectangle.Left, DisplayRectangle.Top, Size.Width, Size.Height);
         }
@@ -431,6 +447,7 @@ namespace Modern.Forms
 
             SetWindowStartupLocation ();
             window.Show (true, false);
+            SyncAdapterBounds ();
 
             if (this is Form f)
                 Application.OpenForms.Add (f);
@@ -449,6 +466,7 @@ namespace Modern.Forms
             SetWindowStartupLocation (parent);
             parent.SetEnabled (false);
             window.Show (true, true);
+            SyncAdapterBounds ();
 
             if (this is Form f)
                 Application.OpenForms.Add (f);

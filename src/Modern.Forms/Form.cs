@@ -262,7 +262,7 @@ namespace Modern.Forms
                     if (!minimum_size.IsEmpty && !maximum_size.IsEmpty)
                         minimum_size = new System.Drawing.Size (Math.Min (minimum_size.Width, maximum_size.Width), Math.Min (minimum_size.Height, maximum_size.Height));
 
-                    Window.SetMinMaxSize (minimum_size.ToAvaloniaSize (), maximum_size.ToAvaloniaSize ());
+                    ApplyWindowSizeLimits ();
 
                     // Keep form size within new limits
                     var size = Size;
@@ -287,7 +287,7 @@ namespace Modern.Forms
                     if (!minimum_size.IsEmpty && !maximum_size.IsEmpty)
                         maximum_size = new System.Drawing.Size (Math.Max (minimum_size.Width, maximum_size.Width), Math.Max (minimum_size.Height, maximum_size.Height));
 
-                    Window.SetMinMaxSize (minimum_size.ToAvaloniaSize (), maximum_size.ToAvaloniaSize ());
+                    ApplyWindowSizeLimits ();
 
                     // Keep form size within new limits
                     var size = Size;
@@ -297,6 +297,16 @@ namespace Modern.Forms
                     OnMinimumSizeChanged (EventArgs.Empty);
                 }
             }
+        }
+
+        private void ApplyWindowSizeLimits ()
+        {
+            // Size.Empty means "unbounded" for a form, but AppKit interprets a
+            // native maximum of (0, 0) literally and collapses the whole window.
+            var maximum = maximum_size.IsEmpty
+                ? new Size (double.PositiveInfinity, double.PositiveInfinity)
+                : maximum_size.ToAvaloniaSize ();
+            Window.SetMinMaxSize (minimum_size.ToAvaloniaSize (), maximum);
         }
 
         /// <summary>

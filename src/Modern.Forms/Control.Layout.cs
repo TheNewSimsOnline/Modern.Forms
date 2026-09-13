@@ -623,9 +623,14 @@ public partial class Control
         if (newSize) {
             OnSizeChanged (EventArgs.Empty);
             // OnClientSizeChanged (EventArgs.Empty);
-            //PerformLayout (this, nameof (Bounds)); // TESTING
             // Clear PreferredSize cache for this control
             CommonProperties.xClearPreferredSizeCache (this);
+
+            // A container that changed size has to lay itself out: docked children
+            // need the new display rectangle and anchored children need the new
+            // edge distances. Without this an anchored child keeps the bounds it
+            // was given at design time no matter how large its container grows.
+            LayoutTransaction.DoLayout (this, this, PropertyNames.Bounds);
             LayoutTransaction.DoLayout (Parent, this, PropertyNames.Bounds);
         }
     }

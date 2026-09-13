@@ -59,6 +59,15 @@ namespace Modern.Forms
             StackLayoutEngine.HorizontalExpand.Layout (ClientRectangle, Tabs.Cast<ILayoutable> ());
         }
 
+        // TabControl uses this as a final compositing pass. Some native backends
+        // omit implicit child buffers even though they still participate in
+        // layout and input routing.
+        internal void RenderOntoParent (PaintEventArgs e)
+        {
+            LayoutTabs ();
+            RenderManager.Render (this, e);
+        }
+
         /// <inheritdoc/>
         protected override void OnClick (MouseEventArgs e)
         {
